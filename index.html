@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-time Map</title>
+  <style>
+    #map {
+      height: 300px;
+      width: 80%;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <button class="geo-btn">Show User Location</button>
+  <p class="show">User location...</p>
+  <p class="fulladdress">full location...</p>
+  <p class="formataddress">format location...</p>
+  <div id="map"></div>
+
+  <script>
+    const show = document.querySelector(".show");
+    const fulladdress = document.querySelector(".fulladdress");
+    const formataddress = document.querySelector(".formataddress");
+
+    const endpoint = "https://api.opencagedata.com/geocode/v1/json";
+    const apiKey = "5319fb2dfece4cef8e92922365825ba7"; // OpenCage API
+
+    let map, marker;
+
+    // Initialize Google Map
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 15,
+        center: { lat: 0, lng: 0 },
+        mapTypeId: "hybrid", // Options: roadmap, satellite, hybrid, terrain
+        mapTypeControl: true, // Show map type buttons
+      });
+
+
+      marker = new google.maps.Marker({
+        map: map,
+        title: "You are here",
+      });
+    }
+
+    const getUserLocation = async (latitude, longitude) => {
+      let query = `${latitude},${longitude}`;
+      let apiUrl = `${endpoint}?key=${apiKey}&q=${query}&pretty=1`;
+
+      try {
+        const res = await fetch(apiUrl);
+        const data = await res.json();
+
+        if (data.results && data.results.length > 0) {
+          const { city, state, postcode, country } = data.results[0].components;
+          fulladdress.textContent = `User address: ${city || ""}, ${postcode || ""}, ${state || ""}, ${country || ""}`;
+          formataddress.textContent = `Formatted address: ${data.results[0].formatted}`;
+        } else {
+          fulladdress.textContent = "No address found.";
+        }
+      } catch (error) {
+        fulladdress.textContent = "Error: " + error.message;
+      }
+    };
+
+    document.querySelector(".geo-btn").addEventListener("click", () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            const lat = parseFloat(latitude.toFixed(5));
+            const lon = parseFloat(longitude.toFixed(5));
+
+            show.innerHTML = `Latitude: ${lat}, Longitude: ${lon}`;
+
+            // Update Google Map
+            const pos = { lat, lng: lon };
+            marker.setPosition(pos);
+            map.setCenter(pos);
+
+            // Call OpenCage API to get address
+            getUserLocation(lat, lon);
+          },
+          (error) => {
+            show.textContent = `Error: ${error.message}`;
+          }
+        );
+      } else {
+        show.textContent = "Geolocation is not supported in this browser.";
+      }
+    });
+  </script>
+
+  <!-- Load Google Maps JS API -->
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCWyPC0l9btQfPH69lsmrlcXB-ZJp9GYkM&callback=initMap">
+    </script>
+</body>
+
+</html>
